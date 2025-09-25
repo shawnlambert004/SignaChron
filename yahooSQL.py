@@ -41,3 +41,5 @@ if all_data:
 else:
     print("empty")
 
+engine = create_engine('postgresql://postgres:*******@localhost/signachronodata')
+historical_data.to_sql('S&P500_price_history', engine, if_exists='replace')
