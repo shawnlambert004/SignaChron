@@ -2,32 +2,42 @@ from sqlalchemy import create_engine
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
+import requests
+from io import StringIO
 
 
-url_nasdaq = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
-nasdaq_symbol_df = pd.read_csv(url_nasdaq, sep="|")
-nasdaq_symbols = nasdaq_symbol_df['Symbol'].tolist()
+url_SP500 = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+headers = {"User-Agent": "Mozilla/5.0"}
+response = requests.get(url_SP500, headers=headers)
+
+SP500_table = pd.read_html(StringIO(response.text))
+SP500_symbols_df = SP500_table[0]
+SP500_symbols = SP500_symbols_df['Symbol'].tolist()
+SP500_symbols = [s.replace('.', '-') for s in SP500_symbols]
 
 start_date = (datetime.today() - timedelta(days=5*365)).strftime('%Y-%m-%d')
 end_date = datetime.today().strftime('%Y-%m-%d')
 
 historical_data = pd.DataFrame()
+all_data = []
 
-for i, name in enumerate(nasdaq_symbols[:200]):
+for name in SP500_symbols:
     try:
-        test_data = yf.download(name, start=start_date, end=end_date, progress=False, auto_adjust=False)
+        ticker = yf.Ticker(name)
+        test_data = ticker.history(start=start_date, end=end_date, interval="1mo", auto_adjust=False)
+        print(f"{name} raw data:")
         if test_data.empty:
             continue
-        test_data_resampled = test_data.resample('ME').agg({'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'})
-        test_data_resampled['Symbol'] = name
-        historical_data = pd.concat([historical_data,test_data_resampled], ignore_index=True)
-        print(historical_data)
+        test_data = test_data.reset_index()
+        
+        test_data['Symbol'] = name
+        all_data.append(test_data)
     except Exception:
         continue
-historical_data.reset_index(inplace=True)
-print(historical_data)
+
+if all_data:
+    historical_data = pd.concat(all_data, ignore_index=True)
+    print(historical_data)
+else:
+    print("empty")
 
