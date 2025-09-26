@@ -24,7 +24,7 @@ all_data = []
 for name in SP500_symbols:
     try:
         ticker = yf.Ticker(name)
-        test_data = ticker.history(start=start_date, end=end_date, interval="1mo", auto_adjust=False)
+        test_data = ticker.history(start=start_date, end=end_date, interval="1d", auto_adjust=False)
         print(f"{name} raw data:")
         if test_data.empty:
             continue
